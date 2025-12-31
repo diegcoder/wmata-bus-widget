@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WMATA Stop 1001738 - Route D44</title>
+  <style>
+    body { font-family: -apple-system, Arial, sans-serif; margin: 16px; }
+    .card { border: 1px solid #ddd; border-radius: 14px; padding: 16px; max-width: 620px; }
+    h1 { font-size: 18px; margin: 0 0 6px 0; }
+    .sub { color: #666; font-size: 13px; margin-bottom: 12px; }
+    .line { font-size: 20px; margin: 10px 0; }
+    .muted { color: #666; font-size: 12px; margin-top: 12px; }
+    .error { color: #b00020; font-size: 14px; margin-top: 10px; white-space: pre-wrap; }
+    .debug { color: #666; font-size: 12px; margin-top: 10px; white-space: pre-wrap; display:none; }
+    button { margin-top: 12px; padding: 10px 12px; font-size: 14px; border-radius: 10px; border: 1px solid #ccc; background: #fff; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1 id="title">Next D44 buses (Stop 1001738)</h1>
+    <div class="sub" id="stop-name">WMATA real-time predictions · refreshes every 20 seconds</div>
+
+    <div id="bus-times" class="line">Loading…</div>
+    <div id="error" class="error" style="display:none;"></div>
+
+    <div id="debug" class="debug"></div>
+
+    <div id="last-updated" class="muted"></div>
+
+    <button id="refresh-btn" type="button">Refresh now</button>
+  </div>
+
+  <script>
+    // Your WMATA API key
+    const WMATA_API_KEY = "204a3cf7287445bab08b166f601e43d3";
+
+    // Stop + route
+    const STOP_ID = "1001738";
+    const ROUTE_ID = "D44"; // IMPORTANT: busETA shows D44 (11 ST), not "44"
+
+    // WMATA "JSON - Next Buses" endpoint (Real-Time Bus Predictions)
+    const URL = `https://api.wmata.com/NextBusService.svc/json/jPredictions?StopID=${encodeURIComponent(STOP_ID)}`;
+
+    function renderPrediction(p) {
+      const mins = Number(p.Minutes);
+      const when = (mins === 0) ? "Due" : `In ${mins} min`;
+      const dir = p.DirectionText ? ` · ${p.DirectionText}` : "";
+      return `${when}${dir}`;
+    }
+
+    async function fetchBusTimes() {
+      const busEl = document.getElementById("bus-times");
+      const errEl = document.getElementById("error");
+      const updatedEl = document.getElementById("last-updated");
+      const stopNameEl = document.getElementById("stop-name");
+      const debugEl = document.getElementById("debug");
+
+      errEl.style.display = "none";
+      errEl.textContent = "";
+      debugEl.style.display = "none";
+      debugEl.textContent = "";
+
+      try {
+        const resp = await fetch(URL, { headers: { "api_key": WMATA_API_KEY } });
+
+        if (!resp.ok) {
+          let extra = "";
+          try {
+            const maybeJson = await resp.json();
+            if (maybeJson && maybeJson.Message) extra = `\n${maybeJson.Message}`;
+          } catch (_) {}
+
+          busEl.textContent = "Could not load predictions.";
+          errEl.style.display = "block";
+          errEl.textContent = `WMATA API error: ${resp.status} ${resp.statusText}${extra}`;
+          return;
+        }
+
+        const data = await resp.json();
+
+        // StopName is returned by this API
+        stopNameEl.textContent = data.StopName
+          ? `${data.StopName} · refreshes every 20 seconds`
+          : `WMATA real-time predictions · refreshes every 20 seconds`;
+
+        const all = (data.Predictions || []);
+
+        // Filter to D44
+        let preds = all.filter(p => String(p.RouteID).toUpperCase() === ROUTE_ID);
+
+        // If none, show debug info about what routes WMATA IS returning at this stop
+        if (preds.length === 0) {
+          const routesHere = [...new Set(all.map(p => p.RouteID))].sort();
+          busEl.textContent = `No ${ROUTE_ID} arrivals showing right now.`;
+          debugEl.style.display = "block";
+          debugEl.textContent =
+            `Debug: WMATA returned ${all.length} predictions at this stop.\n` +
+            `Routes seen: ${routesHere.length ? routesHere.join(", ") : "(none)"}`;
+        } else {
+          // Sort by soonest Minutes
+          preds.sort((a, b) => Number(a.Minutes) - Number(b.Minutes));
+
+          // Show up to next 3 buses
+          const top = preds.slice(0, 3);
+          busEl.innerHTML = top.map(renderPrediction).join("<br>");
+        }
+
+        updatedEl.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+      } catch (e) {
+        busEl.textContent = "Network error loading predictions.";
+        errEl.style.display = "block";
+        errEl.textContent =
+          "If you opened this file via file:// and see CORS errors in DevTools, run it from http://localhost using a simple local server.";
+      }
+    }
+
+    fetchBusTimes();
+    setInterval(fetchBusTimes, 20000);
+    document.getElementById("refresh-btn").addEventListener("click", fetchBusTimes);
+  </script>
+</body>
+</html>
