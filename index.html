@@ -3,100 +3,222 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>WMATA Stop 1001738 - D44</title>
+  <title>WMATA: Stop 1001738 (D44) + U Street (E03)</title>
   <style>
     body { font-family: -apple-system, Arial, sans-serif; margin: 16px; }
-    .card { border: 1px solid #ddd; border-radius: 14px; padding: 16px; max-width: 620px; }
+
+    /* Always vertical (no horizontal layout) */
+    .stack { display: grid; grid-template-columns: 1fr; gap: 14px; max-width: 760px; }
+
+    .card { border: 1px solid #ddd; border-radius: 14px; padding: 16px; }
     h1 { font-size: 18px; margin: 0 0 6px 0; }
     .sub { color: #666; font-size: 13px; margin-bottom: 12px; }
-    .line { font-size: 20px; margin: 10px 0; }
-    .muted { color: #666; font-size: 12px; margin-top: 12px; }
-    .error { color: #b00020; font-size: 14px; margin-top: 10px; white-space: pre-wrap; }
-    button { margin-top: 12px; padding: 10px 12px; font-size: 14px; border-radius: 10px; border: 1px solid #ccc; background: #fff; }
+    .line { font-size: 18px; margin: 10px 0; }
+    .muted { color: #666; font-size: 12px; margin-top: 10px; white-space: pre-wrap; }
+    .error { color: #b00020; font-size: 13px; margin-top: 10px; white-space: pre-wrap; display:none; }
+    button { margin-top: 10px; padding: 10px 12px; font-size: 14px; border-radius: 10px; border: 1px solid #ccc; background: #fff; }
+    .pill { display: inline-block; padding: 2px 8px; border: 1px solid #ddd; border-radius: 999px; font-size: 12px; color: #444; margin-left: 6px; }
+
+    /* Line color coding (rail) */
+    .rail-line { font-weight: 600; padding: 1px 6px; border-radius: 999px; border: 1px solid #ddd; }
+    .line-GR { color: #0a7a2f; border-color: #0a7a2f33; background: #0a7a2f10; } /* Green */
+    .line-YL { color: #b58900; border-color: #b5890033; background: #b5890015; } /* Yellow */
+
+    /* Destination (end station) colored to match line */
+    .dest-GR { color: #0a7a2f; }
+    .dest-YL { color: #b58900; }
   </style>
 </head>
 <body>
-  <div class="card">
-    <h1>Next D44 buses (Stop 1001738)</h1>
-    <div class="sub" id="stop-name">WMATA real-time predictions · refreshes every 20 seconds</div>
+  <div class="stack">
 
-    <div id="bus-times" class="line">Loading…</div>
-    <div id="error" class="error" style="display:none;"></div>
+    <!-- BUS CARD -->
+    <div class="card">
+      <h1>Next D44 buses <span class="pill">Stop 1001738</span></h1>
+      <div class="sub" id="bus-stop-name">WMATA real-time bus predictions · refreshes every 20 seconds</div>
 
-    <div id="last-updated" class="muted"></div>
-    <button id="refresh-btn" type="button">Refresh now</button>
+      <div id="bus-times" class="line">Loading…</div>
+      <div id="bus-error" class="error"></div>
+      <div id="bus-updated" class="muted"></div>
+      <button id="bus-refresh" type="button">Refresh buses</button>
+    </div>
+
+    <!-- TRAIN CARD -->
+    <div class="card">
+      <h1>Next trains <span class="pill">U Street (E03)</span></h1>
+      <div class="sub" id="rail-station-name">WMATA real-time rail predictions · refreshes every 20 seconds</div>
+
+      <div id="rail-times" class="line">Loading…</div>
+      <div id="rail-error" class="error"></div>
+      <div id="rail-updated" class="muted"></div>
+      <button id="rail-refresh" type="button">Refresh trains</button>
+    </div>
+
   </div>
 
   <script>
+    // === CONFIG ===
     const WMATA_API_KEY = "204a3cf7287445bab08b166f601e43d3";
-    const STOP_ID = "1001738";
-    const ROUTE_ID = "D44"; // busETA shows D44
 
-    // Put api_key in query string to avoid CORS issues with custom headers
-    const URL =
+    // Bus
+    const BUS_STOP_ID = "1001738";
+    const BUS_ROUTE_ID = "D44";
+
+    // Rail (U Street station code)
+    const RAIL_STATION_CODE = "E03";
+
+    const BUS_URL =
       `https://api.wmata.com/NextBusService.svc/json/jPredictions` +
-      `?StopID=${encodeURIComponent(STOP_ID)}` +
+      `?StopID=${encodeURIComponent(BUS_STOP_ID)}` +
       `&api_key=${encodeURIComponent(WMATA_API_KEY)}`;
 
-    function renderPrediction(p) {
+    const RAIL_URL =
+      `https://api.wmata.com/StationPrediction.svc/json/GetPrediction/${encodeURIComponent(RAIL_STATION_CODE)}` +
+      `?api_key=${encodeURIComponent(WMATA_API_KEY)}`;
+
+    // === BUS ===
+    function renderBus(p) {
       const mins = Number(p.Minutes);
       const when = (mins === 0) ? "Due" : `In ${mins} min`;
       const dir = p.DirectionText ? ` · ${p.DirectionText}` : "";
       return `${when}${dir}`;
     }
 
-    async function fetchBusTimes() {
-      const busEl = document.getElementById("bus-times");
-      const errEl = document.getElementById("error");
-      const updatedEl = document.getElementById("last-updated");
-      const stopNameEl = document.getElementById("stop-name");
+    async function fetchBuses() {
+      const out = document.getElementById("bus-times");
+      const err = document.getElementById("bus-error");
+      const stopName = document.getElementById("bus-stop-name");
+      const updated = document.getElementById("bus-updated");
 
-      errEl.style.display = "none";
-      errEl.textContent = "";
+      err.style.display = "none";
+      err.textContent = "";
 
       try {
-        const resp = await fetch(URL);
-
+        const resp = await fetch(BUS_URL);
         if (!resp.ok) {
           let extra = "";
-          try {
-            const j = await resp.json();
-            if (j && j.Message) extra = `\n${j.Message}`;
-          } catch (_) {}
-          busEl.textContent = "Could not load predictions.";
-          errEl.style.display = "block";
-          errEl.textContent = `WMATA API error: ${resp.status} ${resp.statusText}${extra}`;
+          try { const j = await resp.json(); if (j?.Message) extra = `\n${j.Message}`; } catch (_) {}
+          out.textContent = "Could not load bus predictions.";
+          err.style.display = "block";
+          err.textContent = `Bus API error: ${resp.status} ${resp.statusText}${extra}`;
           return;
         }
 
         const data = await resp.json();
-        stopNameEl.textContent = data.StopName
+        stopName.textContent = data.StopName
           ? `${data.StopName} · refreshes every 20 seconds`
-          : `WMATA real-time predictions · refreshes every 20 seconds`;
+          : "WMATA real-time bus predictions · refreshes every 20 seconds";
 
         const all = (data.Predictions || []);
-        const preds = all.filter(p => String(p.RouteID).toUpperCase() === ROUTE_ID);
+        const preds = all.filter(p => String(p.RouteID).toUpperCase() === BUS_ROUTE_ID);
 
         if (preds.length === 0) {
-          // Show what routes WMATA is returning (helps debugging)
           const routesHere = [...new Set(all.map(p => p.RouteID))].sort();
-          busEl.textContent = `No ${ROUTE_ID} arrivals showing right now. Routes seen: ${routesHere.join(", ") || "(none)"}`;
-        } else {
-          preds.sort((a, b) => Number(a.Minutes) - Number(b.Minutes));
-          busEl.innerHTML = preds.slice(0, 3).map(renderPrediction).join("<br>");
+          out.textContent = `No ${BUS_ROUTE_ID} arrivals showing right now.`;
+          updated.textContent = `Routes currently returned at this stop: ${routesHere.join(", ") || "(none)"}\nLast updated: ${new Date().toLocaleTimeString()}`;
+          return;
         }
 
-        updatedEl.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+        preds.sort((a, b) => Number(a.Minutes) - Number(b.Minutes));
+        out.innerHTML = preds.slice(0, 3).map(renderBus).join("<br>");
+        updated.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
       } catch (e) {
-        busEl.textContent = "Network error loading predictions.";
-        errEl.style.display = "block";
-        errEl.textContent = String(e);
+        out.textContent = "Network error loading bus predictions.";
+        err.style.display = "block";
+        err.textContent = String(e);
       }
     }
 
-    fetchBusTimes();
-    setInterval(fetchBusTimes, 20000);
-    document.getElementById("refresh-btn").addEventListener("click", fetchBusTimes);
+    // === RAIL ===
+    function minLabel(min) {
+      const m = (min || "").toString().trim();
+      if (m === "ARR") return "Arriving";
+      if (m === "BRD") return "Boarding";
+      if (m === "---" || m === "") return "—";
+      return `In ${m} min`;
+    }
+
+    function lineClass(line) {
+      // Only color code GR and YL as requested; others stay unstyled
+      if (line === "GR") return "line-GR";
+      if (line === "YL") return "line-YL";
+      return "";
+    }
+
+    function destClass(line) {
+      if (line === "GR") return "dest-GR";
+      if (line === "YL") return "dest-YL";
+      return "";
+    }
+
+    function renderTrain(t) {
+      const line = (t.Line && t.Line !== "No") ? t.Line : "";
+      const lc = lineClass(line);
+      const dc = destClass(line);
+
+      const when = minLabel(t.Min);
+      const destText =
+        t.DestinationName ? t.DestinationName :
+        (t.Destination ? t.Destination : "");
+
+      const track = t.Group ? ` · Track ${t.Group}` : "";
+
+      const lineBadge = line
+        ? `<span class="rail-line ${lc}">${line}</span>`
+        : "";
+
+      const destHtml = destText
+        ? ` → <span class="${dc}">${destText}</span>`
+        : "";
+
+      return `${when} ${lineBadge}${destHtml}${track}`;
+    }
+
+    async function fetchTrains() {
+      const out = document.getElementById("rail-times");
+      const err = document.getElementById("rail-error");
+      const stationName = document.getElementById("rail-station-name");
+      const updated = document.getElementById("rail-updated");
+
+      err.style.display = "none";
+      err.textContent = "";
+
+      try {
+        const resp = await fetch(RAIL_URL);
+        if (!resp.ok) {
+          out.textContent = "Could not load train predictions.";
+          err.style.display = "block";
+          err.textContent = `Rail API error: ${resp.status} ${resp.statusText}`;
+          return;
+        }
+
+        const data = await resp.json();
+        stationName.textContent = "U Street/African-Amer Civil War Memorial/Cardozo · refreshes every 20 seconds";
+
+        const trains = (data.Trains || []);
+        if (trains.length === 0) {
+          out.textContent = "No train predictions available right now.";
+          updated.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+          return;
+        }
+
+        out.innerHTML = trains.slice(0, 6).map(renderTrain).join("<br>");
+        updated.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+      } catch (e) {
+        out.textContent = "Network error loading train predictions.";
+        err.style.display = "block";
+        err.textContent = String(e);
+      }
+    }
+
+    // Init + refresh loop
+    fetchBuses();
+    fetchTrains();
+    setInterval(fetchBuses, 20000);
+    setInterval(fetchTrains, 20000);
+
+    document.getElementById("bus-refresh").addEventListener("click", fetchBuses);
+    document.getElementById("rail-refresh").addEventListener("click", fetchTrains);
   </script>
 </body>
 </html>
