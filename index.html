@@ -2,223 +2,664 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>WMATA: Stop 1001738 (D44) + U Street (E03)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>WMATA Transit — Stop 1001738 & U Street</title>
   <style>
-    body { font-family: -apple-system, Arial, sans-serif; margin: 16px; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
-    /* Always vertical (no horizontal layout) */
-    .stack { display: grid; grid-template-columns: 1fr; gap: 14px; max-width: 760px; }
+    body {
+      font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+      background: #f2f2f7;
+      padding: env(safe-area-inset-top, 12px) 12px env(safe-area-inset-bottom, 12px);
+      min-height: 100vh;
+    }
 
-    .card { border: 1px solid #ddd; border-radius: 14px; padding: 16px; }
-    h1 { font-size: 18px; margin: 0 0 6px 0; }
-    .sub { color: #666; font-size: 13px; margin-bottom: 12px; }
-    .line { font-size: 18px; margin: 10px 0; }
-    .muted { color: #666; font-size: 12px; margin-top: 10px; white-space: pre-wrap; }
-    .error { color: #b00020; font-size: 13px; margin-top: 10px; white-space: pre-wrap; display:none; }
-    button { margin-top: 10px; padding: 10px 12px; font-size: 14px; border-radius: 10px; border: 1px solid #ccc; background: #fff; }
-    .pill { display: inline-block; padding: 2px 8px; border: 1px solid #ddd; border-radius: 999px; font-size: 12px; color: #444; margin-left: 6px; }
+    .wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-width: 480px;
+      margin: 0 auto;
+      padding-top: 12px;
+    }
 
-    /* Line color coding (rail) */
-    .rail-line { font-weight: 600; padding: 1px 6px; border-radius: 999px; border: 1px solid #ddd; }
-    .line-GR { color: #0a7a2f; border-color: #0a7a2f33; background: #0a7a2f10; } /* Green */
-    .line-YL { color: #b58900; border-color: #b5890033; background: #b5890015; } /* Yellow */
+    /* ── CARD ── */
+    .card {
+      background: #ffffff;
+      border-radius: 14px;
+      padding: 12px 14px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
 
-    /* Destination (end station) colored to match line */
-    .dest-GR { color: #0a7a2f; }
-    .dest-YL { color: #b58900; }
+    /* ── CARD HEADER ── */
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      gap: 8px;
+    }
+    .card-title {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      flex: 1;
+      min-width: 0;
+    }
+    .card-title-icon {
+      font-size: 18px;
+      color: #1c1c1e;
+      flex-shrink: 0;
+    }
+    .card-title-text {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1c1c1e;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .badge {
+      font-size: 12px;
+      font-weight: 600;
+      padding: 2px 9px;
+      border-radius: 999px;
+      flex-shrink: 0;
+      color: #1c1c1e;
+      background: #f2f2f7;
+      border: 1px solid #d1d1d6;
+    }
+    .refresh-btn {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 13px;
+      color: #3c3c43;
+      background: none;
+      border: 1px solid #d1d1d6;
+      border-radius: 8px;
+      padding: 5px 11px;
+      cursor: pointer;
+      flex-shrink: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .refresh-btn:active { opacity: 0.6; }
+
+    /* ── SERVICE ALERT ── */
+    .alert-bar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: #fdf3e3;
+      border: 1px solid #e8c170;
+      border-radius: 7px;
+      padding: 7px 10px;
+      margin-bottom: 10px;
+      overflow: hidden;
+    }
+    .alert-icon { font-size: 13px; color: #7a4f0a; flex-shrink: 0; }
+    .alert-text {
+      font-size: 12px;
+      color: #7a4f0a;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex: 1;
+    }
+    .alert-link {
+      font-size: 11px;
+      font-weight: 700;
+      color: #7a4f0a;
+      text-decoration: underline;
+      flex-shrink: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* ── ARRIVAL ROWS ── */
+    .arrival-list { display: flex; flex-direction: column; gap: 5px; }
+
+    .arrival-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 7px 10px;
+      border-radius: 8px;
+      background: #f2f2f7;
+      gap: 6px;
+    }
+    .arrival-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+      min-width: 0;
+    }
+    .route-chip {
+      background: #0D5692;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 6px;
+      flex-shrink: 0;
+      text-align: center;
+    }
+    .route-dir {
+      font-size: 14px;
+      color: #1c1c1e;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .mins {
+      font-size: 14px;
+      font-weight: 600;
+      flex-shrink: 0;
+      text-align: right;
+      min-width: 46px;
+    }
+    .mins-due  { color: #c0392b; }
+    .mins-soon { color: #b8760a; }
+    .mins-ok   { color: #1a7a5e; }
+
+    /* ── SECTION LABEL ── */
+    .section-label {
+      font-size: 10px;
+      font-weight: 700;
+      color: #6c6c70;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .track-pill {
+      font-size: 9px;
+      font-weight: 700;
+      color: #6c6c70;
+      background: #e5e5ea;
+      border-radius: 4px;
+      padding: 1px 5px;
+      margin-left: 2px;
+    }
+
+    .dir-block { margin-bottom: 10px; }
+    .dir-block:last-child { margin-bottom: 0; }
+
+    /* ── TRAIN ROWS ── */
+    .train-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 7px 10px;
+      border-radius: 8px;
+      background: #f2f2f7;
+      margin-bottom: 5px;
+    }
+    .train-row:last-child { margin-bottom: 0; }
+    .train-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+    }
+    .line-dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .dot-green  { background: #1a7a5e; }
+    .dot-yellow { background: #c8930a; }
+
+    .train-info { display: flex; flex-direction: column; gap: 1px; }
+    .train-dest {
+      font-size: 14px;
+      font-weight: 500;
+      color: #1c1c1e;
+    }
+    .train-sub {
+      font-size: 11px;
+      color: #6c6c70;
+    }
+
+    /* ── PROGRESS + FOOTER ── */
+    .progress-bar {
+      height: 2px;
+      background: #e5e5ea;
+      border-radius: 2px;
+      margin-top: 10px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      border-radius: 2px;
+      transition: width 0.4s linear;
+    }
+    .fill-bus  { background: #0D5692; }
+    .fill-rail { background: #1a7a5e; }
+
+    .footer {
+      font-size: 11px;
+      color: #8e8e93;
+      margin-top: 6px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* ── LOADING / ERROR ── */
+    .state-msg {
+      font-size: 13px;
+      color: #6c6c70;
+      padding: 6px 0;
+      text-align: center;
+    }
+    .error-msg {
+      font-size: 12px;
+      color: #c0392b;
+      margin-top: 6px;
+      display: none;
+    }
+
+    /* ── DARK MODE ── */
+    @media (prefers-color-scheme: dark) {
+      body { background: #000; }
+      .card { background: #1c1c1e; box-shadow: none; }
+      .card-title-text, .route-dir, .train-dest { color: #f2f2f7; }
+      .badge { background: #2c2c2e; border-color: #3a3a3c; color: #f2f2f7; }
+      .refresh-btn { border-color: #3a3a3c; color: #ebebf5; }
+      .arrival-row, .train-row { background: #2c2c2e; }
+      .section-label, .footer { color: #8e8e93; }
+      .track-pill { background: #3a3a3c; color: #8e8e93; }
+      .train-sub, .route-dir { color: #ebebf599; }
+      .train-sub { color: #8e8e93; }
+      .progress-bar { background: #3a3a3c; }
+      .alert-bar { background: #2d1e00; border-color: #7a4f0a; }
+      .state-msg { color: #8e8e93; }
+    }
   </style>
 </head>
 <body>
-  <div class="stack">
+<div class="wrap">
 
-    <!-- BUS CARD -->
-    <div class="card">
-      <h1>Next D44 buses <span class="pill">Stop 1001738</span></h1>
-      <div class="sub" id="bus-stop-name">WMATA real-time bus predictions · refreshes every 20 seconds</div>
-
-      <div id="bus-times" class="line">Loading…</div>
-      <div id="bus-error" class="error"></div>
-      <div id="bus-updated" class="muted"></div>
-      <button id="bus-refresh" type="button">Refresh buses</button>
+  <!-- ══════════════════════════════════
+       BUS CARD — Stop 1001738 / D44
+  ══════════════════════════════════ -->
+  <div class="card" id="bus-card">
+    <div class="card-header">
+      <div class="card-title">
+        <svg class="card-title-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="2" y="4" width="20" height="14" rx="2"/><path d="M2 9h20M8 4v5M16 4v5M6 18v2M18 18v2"/>
+        </svg>
+        <span class="card-title-text">Florida Ave NW &amp; W St NW — Stop 1001738</span>
+        <span class="badge" id="bus-badge">D44</span>
+      </div>
+      <button class="refresh-btn" id="bus-refresh-btn" onclick="fetchBuses()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+        Refresh
+      </button>
     </div>
 
-    <!-- TRAIN CARD -->
-    <div class="card">
-      <h1>Next trains <span class="pill">U Street (E03)</span></h1>
-      <div class="sub" id="rail-station-name">WMATA real-time rail predictions · refreshes every 20 seconds</div>
-
-      <div id="rail-times" class="line">Loading…</div>
-      <div id="rail-error" class="error"></div>
-      <div id="rail-updated" class="muted"></div>
-      <button id="rail-refresh" type="button">Refresh trains</button>
+    <div class="alert-bar" id="bus-alert" style="display:none;">
+      <svg class="alert-icon" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <span class="alert-text" id="bus-alert-text"></span>
+      <a class="alert-link" id="bus-alert-link" href="https://wmata.com/service/status/alerts.cfm" target="_blank" rel="noopener">Details ↗</a>
     </div>
 
+    <div class="arrival-list" id="bus-list">
+      <div class="state-msg">Loading…</div>
+    </div>
+    <div class="error-msg" id="bus-error"></div>
+
+    <div class="progress-bar">
+      <div class="progress-fill fill-bus" id="bus-prog" style="width:100%;"></div>
+    </div>
+    <div class="footer" id="bus-footer">
+      <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <span id="bus-updated">Connecting…</span>
+    </div>
   </div>
 
-  <script>
-    // === CONFIG ===
-    const WMATA_API_KEY = "204a3cf7287445bab08b166f601e43d3";
+  <!-- ══════════════════════════════════
+       METRO CARD — U Street E03
+  ══════════════════════════════════ -->
+  <div class="card" id="rail-card">
+    <div class="card-header">
+      <div class="card-title">
+        <svg class="card-title-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="4" y="3" width="16" height="13" rx="2"/><path d="M4 10h16M8 3v7M16 3v7M4 16l-2 4M20 16l2 4M12 16v4"/>
+        </svg>
+        <span class="card-title-text">U Street / Cardozo — E03</span>
+        <span class="badge">Metro</span>
+      </div>
+      <button class="refresh-btn" id="rail-refresh-btn" onclick="fetchRail()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+        Refresh
+      </button>
+    </div>
 
-    // Bus
-    const BUS_STOP_ID = "1001738";
-    const BUS_ROUTE_ID = "D44";
+    <div class="alert-bar" id="rail-alert" style="display:none;">
+      <svg class="alert-icon" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <span class="alert-text" id="rail-alert-text"></span>
+      <a class="alert-link" href="https://wmata.com/service/status/alerts.cfm" target="_blank" rel="noopener">Details ↗</a>
+    </div>
 
-    // Rail (U Street station code)
-    const RAIL_STATION_CODE = "E03";
+    <!-- North / Track 1 -->
+    <div class="dir-block">
+      <div class="section-label">
+        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+        North towards Greenbelt
+        <span class="track-pill">Track 1</span>
+      </div>
+      <div id="rail-north">
+        <div class="state-msg">Loading…</div>
+      </div>
+    </div>
 
-    const BUS_URL =
-      `https://api.wmata.com/NextBusService.svc/json/jPredictions` +
-      `?StopID=${encodeURIComponent(BUS_STOP_ID)}` +
-      `&api_key=${encodeURIComponent(WMATA_API_KEY)}`;
+    <!-- South / Track 2 -->
+    <div class="dir-block">
+      <div class="section-label">
+        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+        South towards Branch Av
+        <span class="track-pill">Track 2</span>
+      </div>
+      <div id="rail-south">
+        <div class="state-msg">Loading…</div>
+      </div>
+    </div>
 
-    const RAIL_URL =
-      `https://api.wmata.com/StationPrediction.svc/json/GetPrediction/${encodeURIComponent(RAIL_STATION_CODE)}` +
-      `?api_key=${encodeURIComponent(WMATA_API_KEY)}`;
+    <div class="error-msg" id="rail-error"></div>
 
-    // === BUS ===
-    function renderBus(p) {
-      const mins = Number(p.Minutes);
-      const when = (mins === 0) ? "Due" : `In ${mins} min`;
-      const dir = p.DirectionText ? ` · ${p.DirectionText}` : "";
-      return `${when}${dir}`;
-    }
+    <div class="progress-bar">
+      <div class="progress-fill fill-rail" id="rail-prog" style="width:100%;"></div>
+    </div>
+    <div class="footer" id="rail-footer">
+      <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <span id="rail-updated">Connecting…</span>
+    </div>
+  </div>
 
-    async function fetchBuses() {
-      const out = document.getElementById("bus-times");
-      const err = document.getElementById("bus-error");
-      const stopName = document.getElementById("bus-stop-name");
-      const updated = document.getElementById("bus-updated");
+</div><!-- /.wrap -->
 
-      err.style.display = "none";
-      err.textContent = "";
+<script>
+  const API_KEY  = "204a3cf7287445bab08b166f601e43d3";
+  const BUS_STOP = "1001738";
+  const BUS_ROUTE = "D44";
+  const RAIL_STATION = "E03";
+  const REFRESH_MS = 20000;
 
-      try {
-        const resp = await fetch(BUS_URL);
-        if (!resp.ok) {
-          let extra = "";
-          try { const j = await resp.json(); if (j?.Message) extra = `\n${j.Message}`; } catch (_) {}
-          out.textContent = "Could not load bus predictions.";
-          err.style.display = "block";
-          err.textContent = `Bus API error: ${resp.status} ${resp.statusText}${extra}`;
-          return;
-        }
+  // ── helpers ──────────────────────────────────────────
+  function minsColor(m) {
+    if (m === "BRD" || m === "ARR" || m === 0) return "mins-due";
+    if (m <= 4) return "mins-soon";
+    return "mins-ok";
+  }
 
-        const data = await resp.json();
-        stopName.textContent = data.StopName
-          ? `${data.StopName} · refreshes every 20 seconds`
-          : "WMATA real-time bus predictions · refreshes every 20 seconds";
+  function minsLabel(m) {
+    if (m === "BRD") return "Boarding";
+    if (m === "ARR") return "Arriving";
+    if (m === 0)     return "Due";
+    return `${m} min`;
+  }
 
-        const all = (data.Predictions || []);
-        const preds = all.filter(p => String(p.RouteID).toUpperCase() === BUS_ROUTE_ID);
+  function timeNow() {
+    return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  }
 
-        if (preds.length === 0) {
-          const routesHere = [...new Set(all.map(p => p.RouteID))].sort();
-          out.textContent = `No ${BUS_ROUTE_ID} arrivals showing right now.`;
-          updated.textContent = `Routes currently returned at this stop: ${routesHere.join(", ") || "(none)"}\nLast updated: ${new Date().toLocaleTimeString()}`;
-          return;
-        }
+  // Truncate alert text so it never wraps (approx 38 chars safe on iPhone)
+  function truncateAlert(str, max = 42) {
+    if (!str) return "";
+    str = str.replace(/\s+/g, " ").trim();
+    return str.length > max ? str.slice(0, max - 1) + "…" : str;
+  }
 
+  // ── progress bar animation ────────────────────────────
+  let busProgress  = 100;
+  let railProgress = 100;
+
+  function animateProgress(id, progressRef, setter) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    setter(100);
+    const step = 100 / (REFRESH_MS / 400);
+    const iv = setInterval(() => {
+      setter(prev => {
+        const next = Math.max(0, prev - step);
+        el.style.width = next + "%";
+        return next;
+      });
+    }, 400);
+    return iv;
+  }
+
+  let busIv, railIv;
+
+  function resetBusProgress() {
+    clearInterval(busIv);
+    busProgress = 100;
+    const el = document.getElementById("bus-prog");
+    if (el) el.style.width = "100%";
+    let p = 100;
+    const step = 100 / (REFRESH_MS / 400);
+    busIv = setInterval(() => {
+      p = Math.max(0, p - step);
+      if (el) el.style.width = p + "%";
+    }, 400);
+  }
+
+  function resetRailProgress() {
+    clearInterval(railIv);
+    railProgress = 100;
+    const el = document.getElementById("rail-prog");
+    if (el) el.style.width = "100%";
+    let p = 100;
+    const step = 100 / (REFRESH_MS / 400);
+    railIv = setInterval(() => {
+      p = Math.max(0, p - step);
+      if (el) el.style.width = p + "%";
+    }, 400);
+  }
+
+  // ── BUS ──────────────────────────────────────────────
+  async function fetchBuses() {
+    const listEl    = document.getElementById("bus-list");
+    const errEl     = document.getElementById("bus-error");
+    const updatedEl = document.getElementById("bus-updated");
+    const alertBar  = document.getElementById("bus-alert");
+    const alertText = document.getElementById("bus-alert-text");
+    const alertLink = document.getElementById("bus-alert-link");
+
+    errEl.style.display = "none";
+    errEl.textContent   = "";
+
+    const url = `https://api.wmata.com/NextBusService.svc/json/jPredictions?StopID=${BUS_STOP}&api_key=${API_KEY}`;
+
+    try {
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error(`API ${resp.status}`);
+      const data = await resp.json();
+
+      const all   = data.Predictions || [];
+      const preds = all.filter(p => String(p.RouteID).toUpperCase() === BUS_ROUTE);
+
+      // Service alerts via bus incidents endpoint
+      fetchBusAlerts(alertBar, alertText, alertLink);
+
+      if (preds.length === 0) {
+        const seen = [...new Set(all.map(p => p.RouteID))].join(", ") || "none";
+        listEl.innerHTML = `<div class="state-msg">No ${BUS_ROUTE} arrivals · routes here: ${seen}</div>`;
+      } else {
         preds.sort((a, b) => Number(a.Minutes) - Number(b.Minutes));
-        out.innerHTML = preds.slice(0, 3).map(renderBus).join("<br>");
-        updated.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
-      } catch (e) {
-        out.textContent = "Network error loading bus predictions.";
-        err.style.display = "block";
-        err.textContent = String(e);
+        listEl.innerHTML = preds.slice(0, 3).map(p => {
+          const m   = isNaN(Number(p.Minutes)) ? p.Minutes : Number(p.Minutes);
+          const cls = minsColor(m);
+          const lbl = minsLabel(m);
+          const dir = p.DirectionText || "Federal Triangle";
+          return `
+            <div class="arrival-row">
+              <div class="arrival-left">
+                <span class="route-chip">${BUS_ROUTE}</span>
+                <span class="route-dir">${dir}</span>
+              </div>
+              <span class="mins ${cls}">${lbl}</span>
+            </div>`;
+        }).join("");
       }
+
+      updatedEl.textContent = `Updated ${timeNow()} · refreshes every 20s`;
+      resetBusProgress();
+
+    } catch (e) {
+      listEl.innerHTML    = `<div class="state-msg">Could not load bus data.</div>`;
+      errEl.style.display = "block";
+      errEl.textContent   = String(e);
+      updatedEl.textContent = `Error at ${timeNow()}`;
     }
+  }
 
-    // === RAIL ===
-    function minLabel(min) {
-      const m = (min || "").toString().trim();
-      if (m === "ARR") return "Arriving";
-      if (m === "BRD") return "Boarding";
-      if (m === "---" || m === "") return "—";
-      return `In ${m} min`;
+  async function fetchBusAlerts(bar, textEl, linkEl) {
+    try {
+      const url  = `https://api.wmata.com/Incidents.svc/json/BusIncidents?Route=${BUS_ROUTE}&api_key=${API_KEY}`;
+      const resp = await fetch(url);
+      if (!resp.ok) { bar.style.display = "none"; return; }
+      const data = await resp.json();
+      const inc  = (data.BusIncidents || []);
+      if (inc.length === 0) { bar.style.display = "none"; return; }
+      const msg = inc[0].Description || inc[0].IncidentType || "Service alert";
+      textEl.textContent    = truncateAlert(msg);
+      bar.style.display     = "flex";
+    } catch (_) {
+      bar.style.display = "none";
     }
+  }
 
-    function lineClass(line) {
-      // Only color code GR and YL as requested; others stay unstyled
-      if (line === "GR") return "line-GR";
-      if (line === "YL") return "line-YL";
-      return "";
+  // ── RAIL ─────────────────────────────────────────────
+  const LINE_COLORS = {
+    GR: "#1a7a5e",
+    YL: "#c8930a",
+    RD: "#c0392b",
+    BL: "#0D5692",
+    OR: "#d4620a",
+    SV: "#6c6c70",
+  };
+
+  const LINE_NAMES = {
+    GR: "Green", YL: "Yellow", RD: "Red",
+    BL: "Blue",  OR: "Orange", SV: "Silver",
+  };
+
+  // E03 direction: Group 1 = Greenbelt (north), Group 2 = Branch Av (south)
+  // WMATA rail predictions use Group field (1 or 2)
+  async function fetchRail() {
+    const northEl   = document.getElementById("rail-north");
+    const southEl   = document.getElementById("rail-south");
+    const errEl     = document.getElementById("rail-error");
+    const updatedEl = document.getElementById("rail-updated");
+    const alertBar  = document.getElementById("rail-alert");
+    const alertText = document.getElementById("rail-alert-text");
+
+    errEl.style.display = "none";
+    errEl.textContent   = "";
+
+    const url = `https://api.wmata.com/StationPrediction.svc/json/GetPrediction/${RAIL_STATION}?api_key=${API_KEY}`;
+
+    try {
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error(`API ${resp.status}`);
+      const data = await resp.json();
+
+      const trains = data.Trains || [];
+
+      // Filter out filler entries
+      const valid = trains.filter(t =>
+        t.DestinationName &&
+        t.DestinationName !== "No Passenger" &&
+        t.DestinationName !== "Train" &&
+        t.Min
+      );
+
+      // Group 1 = northbound (Greenbelt), Group 2 = southbound (Branch Av / Huntington)
+      const north = valid.filter(t => String(t.Group) === "1").slice(0, 3);
+      const south = valid.filter(t => String(t.Group) === "2").slice(0, 3);
+
+      northEl.innerHTML = renderTrains(north, "north");
+      southEl.innerHTML = renderTrains(south, "south");
+
+      // Rail alerts
+      fetchRailAlerts(alertBar, alertText);
+
+      updatedEl.textContent = `Updated ${timeNow()} · refreshes every 20s`;
+      resetRailProgress();
+
+    } catch (e) {
+      northEl.innerHTML   = `<div class="state-msg">Could not load rail data.</div>`;
+      southEl.innerHTML   = "";
+      errEl.style.display = "block";
+      errEl.textContent   = String(e);
+      updatedEl.textContent = `Error at ${timeNow()}`;
     }
+  }
 
-    function destClass(line) {
-      if (line === "GR") return "dest-GR";
-      if (line === "YL") return "dest-YL";
-      return "";
+  function renderTrains(trains, dir) {
+    if (trains.length === 0) {
+      return `<div class="state-msg">No predictions available</div>`;
     }
+    return trains.map(t => {
+      const m   = isNaN(Number(t.Min)) ? t.Min : Number(t.Min);
+      const cls = minsColor(m);
+      const lbl = minsLabel(m);
+      const color = LINE_COLORS[t.Line] || "#8e8e93";
+      const line  = LINE_NAMES[t.Line]  || t.Line || "";
+      const cars  = t.Car ? ` · ${t.Car} cars` : "";
+      return `
+        <div class="train-row">
+          <div class="train-left">
+            <div class="line-dot" style="background:${color};"></div>
+            <div class="train-info">
+              <span class="train-dest">${t.DestinationName}</span>
+              <span class="train-sub">${line}${cars}</span>
+            </div>
+          </div>
+          <span class="mins ${cls}">${lbl}</span>
+        </div>`;
+    }).join("");
+  }
 
-    function renderTrain(t) {
-      const line = (t.Line && t.Line !== "No") ? t.Line : "";
-      const lc = lineClass(line);
-      const dc = destClass(line);
-
-      const when = minLabel(t.Min);
-      const destText =
-        t.DestinationName ? t.DestinationName :
-        (t.Destination ? t.Destination : "");
-
-      const track = t.Group ? ` · Track ${t.Group}` : "";
-
-      const lineBadge = line
-        ? `<span class="rail-line ${lc}">${line}</span>`
-        : "";
-
-      const destHtml = destText
-        ? ` → <span class="${dc}">${destText}</span>`
-        : "";
-
-      return `${when} ${lineBadge}${destHtml}${track}`;
+  async function fetchRailAlerts(bar, textEl) {
+    try {
+      const url  = `https://api.wmata.com/Incidents.svc/json/Incidents?StationCode=${RAIL_STATION}&api_key=${API_KEY}`;
+      const resp = await fetch(url);
+      if (!resp.ok) { bar.style.display = "none"; return; }
+      const data = await resp.json();
+      const inc  = (data.Incidents || []);
+      if (inc.length === 0) { bar.style.display = "none"; return; }
+      const msg = inc[0].Description || inc[0].IncidentType || "Service disruption";
+      textEl.textContent = truncateAlert(msg);
+      bar.style.display  = "flex";
+    } catch (_) {
+      bar.style.display = "none";
     }
+  }
 
-    async function fetchTrains() {
-      const out = document.getElementById("rail-times");
-      const err = document.getElementById("rail-error");
-      const stationName = document.getElementById("rail-station-name");
-      const updated = document.getElementById("rail-updated");
+  // ── BUS GPS MAP LINK (vehicle position) ──────────────
+  // (kept for future use — map buttons removed from UI per design)
+  async function fetchBusPosition(vehicleId) {
+    if (!vehicleId) return null;
+    const url  = `https://api.wmata.com/Bus.svc/json/jBusPositions?RouteID=${BUS_ROUTE}&api_key=${API_KEY}`;
+    const resp = await fetch(url);
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    const list = data.BusPositions || [];
+    return list.find(b => String(b.VehicleID) === String(vehicleId)) || null;
+  }
 
-      err.style.display = "none";
-      err.textContent = "";
-
-      try {
-        const resp = await fetch(RAIL_URL);
-        if (!resp.ok) {
-          out.textContent = "Could not load train predictions.";
-          err.style.display = "block";
-          err.textContent = `Rail API error: ${resp.status} ${resp.statusText}`;
-          return;
-        }
-
-        const data = await resp.json();
-        stationName.textContent = "U Street/African-Amer Civil War Memorial/Cardozo · refreshes every 20 seconds";
-
-        const trains = (data.Trains || []);
-        if (trains.length === 0) {
-          out.textContent = "No train predictions available right now.";
-          updated.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
-          return;
-        }
-
-        out.innerHTML = trains.slice(0, 6).map(renderTrain).join("<br>");
-        updated.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
-      } catch (e) {
-        out.textContent = "Network error loading train predictions.";
-        err.style.display = "block";
-        err.textContent = String(e);
-      }
-    }
-
-    // Init + refresh loop
-    fetchBuses();
-    fetchTrains();
-    setInterval(fetchBuses, 20000);
-    setInterval(fetchTrains, 20000);
-
-    document.getElementById("bus-refresh").addEventListener("click", fetchBuses);
-    document.getElementById("rail-refresh").addEventListener("click", fetchTrains);
-  </script>
+  // ── AUTO REFRESH ─────────────────────────────────────
+  fetchBuses();
+  fetchRail();
+  setInterval(fetchBuses, REFRESH_MS);
+  setInterval(fetchRail,  REFRESH_MS);
+</script>
 </body>
 </html>
