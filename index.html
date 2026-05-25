@@ -414,9 +414,8 @@
 
 <script>
   // ── CONFIG ────────────────────────────────────────────
-  // Replace PROXY_BASE with your deployed Cloudflare Worker URL
-  // e.g. "https://wmata-proxy.yourname.workers.dev/proxy"
-  const PROXY_BASE    = "https://wmata-proxy.YOUR-NAME.workers.dev/proxy";
+  const API_KEY       = "204a3cf7287445bab08b166f601e43d3";
+  const WMATA_BASE    = "https://api.wmata.com";
   const BUS_STOP      = "1001738";
   const BUS_ROUTE     = "D44";
   const RAIL_STATION  = "E03";
@@ -501,7 +500,7 @@
 
     try {
       const resp = await fetch(
-        `${PROXY_BASE}/NextBusService.svc/json/jPredictions?StopID=${BUS_STOP}`
+        `${WMATA_BASE}/NextBusService.svc/json/jPredictions?StopID=${BUS_STOP}&api_key=${API_KEY}`
       );
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
@@ -545,7 +544,7 @@
   async function fetchBusAlerts() {
     try {
       const resp = await fetch(
-        `${PROXY_BASE}/Incidents.svc/json/BusIncidents?Route=${BUS_ROUTE}`
+        `${WMATA_BASE}/Incidents.svc/json/BusIncidents?Route=${BUS_ROUTE}&api_key=${API_KEY}`
       );
       if (!resp.ok) { showAlert("bus", null); return; }
       const data = await resp.json();
@@ -567,7 +566,7 @@
 
     try {
       const resp = await fetch(
-        `${PROXY_BASE}/StationPrediction.svc/json/GetPrediction/${RAIL_STATION}`
+        `${WMATA_BASE}/StationPrediction.svc/json/GetPrediction/${RAIL_STATION}?api_key=${API_KEY}`
       );
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
@@ -624,7 +623,7 @@
   async function fetchRailAlerts() {
     try {
       const resp = await fetch(
-        `${PROXY_BASE}/Incidents.svc/json/Incidents?StationCode=${RAIL_STATION}`
+        `${WMATA_BASE}/Incidents.svc/json/Incidents?StationCode=${RAIL_STATION}&api_key=${API_KEY}`
       );
       if (!resp.ok) { showAlert("rail", null); return; }
       const data = await resp.json();
